@@ -33,9 +33,44 @@ public struct FlashingModifier: ViewModifier {
     }
 }
 
+@available(iOS 17.0, *)
+public struct FlashingModifierWithToggle: ViewModifier {
+    @Binding var trigger: Bool
+
+    @State private var isVisible = false
+    @State private var currentTask: Task<Void, any Error>?
+
+    public init(trigger: Binding<Bool>) {
+        self._trigger = trigger
+    }
+
+
+    public func body(content: Content) -> some View {
+        content
+            .opacity(isVisible ? 1 : 0)
+            .onChange(of: trigger) {
+                currentTask?.cancel()
+                currentTask = Task { @MainActor in
+                    isVisible = true
+
+                    try await Task.sleep(for: .seconds(1))
+
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        isVisible = false
+                    }
+                }
+            }
+    }
+}
+
 public extension View {
     func flashing(trigger: PassthroughSubject<Void, Never>) -> some View {
         modifier(FlashingModifier(trigger: trigger))
+    }
+
+    @available(iOS 17.0, *)
+    func flashing(trigger: Binding<Bool>) -> some View {
+        modifier(FlashingModifierWithToggle(trigger: trigger))
     }
 }
 
